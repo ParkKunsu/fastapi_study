@@ -4,20 +4,55 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Request
 from fastapi.templating import Jinja2Templates
+from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
 load_dotenv()
 
 
 app = FastAPI()
+# 세션을 위한 미들웨어 추가
+app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
 templates = Jinja2Templates(directory="templates")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# 로그인을 위한 비밀번호 암호화
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, index=True)
+    email = Column(String(200))
+    hashed_password = Column(String(512))
+
+
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    username: str
+    password: str  # 해시전 패스워드 입력 받음
 
 
 class Memo(Base):
@@ -46,6 +81,16 @@ def get_db():
 
 
 Base.metadata.create_all(bind=engine)
+
+
+@app.post("/signup")
+async def signup(signup_data: UserCreate, db: Session = Depends(get_db)):
+    hashed_password = get_password_hash(signup_data.password)
+    new_user = User(username=signup_data.username, email=signup_data.email, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "Account created successfully", "user_id": new_user.id}
 
 
 # 메모 생성
