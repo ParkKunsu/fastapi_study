@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -91,6 +91,24 @@ async def signup(signup_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return {"message": "Account created successfully", "user_id": new_user.id}
+
+
+# 로그인
+@app.post("/login")
+async def login(request: Request, signin_data: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == signin_data.username).first()
+    if user and verify_password(signin_data.password, user.hashed_password):
+        request.session["username"] = user.username
+        return {"message": "Logged in successfully"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+# 로그아웃
+@app.post("/logout")
+async def logout(request: Request):
+    request.session.pop("username", None)
+    return {"message": "Logged out successfully"}
 
 
 # 메모 생성
