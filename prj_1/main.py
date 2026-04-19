@@ -168,8 +168,14 @@ async def list_memos(request: Request, db: Session = Depends(get_db)):
 
 # 메모 수정
 @app.put("/memos/{memo_id}")
-async def update_memo(memo_id: int, memo: MemoUpdate, db: Session = Depends(get_db)):
-    db_memo = db.query(Memo).filter(Memo.id == memo_id).first()
+async def update_memo(request: Request, memo_id: int, memo: MemoUpdate, db: Session = Depends(get_db)):
+    username = request.session.get("username")
+    if username is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_memo = db.query(Memo).filter(Memo.user_id == user.id, Memo.id == memo_id).first()
     if db_memo is None:
         return {"error": "Memo not found"}
 
@@ -180,13 +186,19 @@ async def update_memo(memo_id: int, memo: MemoUpdate, db: Session = Depends(get_
 
     db.commit()
     db.refresh(db_memo)
-    return {"id": db_memo.id, "title": db_memo.title, "content": db_memo.content}
+    return db_memo
 
 
 # 메모 삭제
 @app.delete("/memos/{memo_id}")
-async def delete_memo(memo_id: int, db: Session = Depends(get_db)):
-    db_memo = db.query(Memo).filter(Memo.id == memo_id).first()
+async def delete_memo(request: Request, memo_id: int, db: Session = Depends(get_db)):
+    username = request.session.get("username")
+    if username is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_memo = db.query(Memo).filter(Memo.user_id == user.id, Memo.id == memo_id).first()
     if db_memo is None:
         return {"error": "Memo not found"}
 
