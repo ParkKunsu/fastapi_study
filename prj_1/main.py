@@ -102,15 +102,26 @@ def get_db():
 Base.metadata.create_all(bind=engine)
 
 
-########## 가입, 로그인, 로그아웃 ##########
+########## 회원 가입, 로그인, 로그아웃 ##########
 @app.post("/signup")
 async def signup(signup_data: UserCreate, db: Session = Depends(get_db)):
+    # username 중복 조회
+    existing_user = db.query(User).filter(User.username == signup_data.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="이미 동일 사용자 이름이 가입 되어 있습니다.")
+
     hashed_password = get_password_hash(signup_data.password)
     new_user = User(username=signup_data.username, email=signup_data.email, hashed_password=hashed_password)
+
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="회원가입이 실패했습니다. 기입한 내용을 확인해보세요.")
+
     db.refresh(new_user)
-    return {"message": "Account created successfully", "user_id": new_user.id}
+    return {"message": "회원가입이 성공했습니다."}
 
 
 # 로그인
@@ -119,16 +130,16 @@ async def login(request: Request, signin_data: UserLogin, db: Session = Depends(
     user = db.query(User).filter(User.username == signin_data.username).first()
     if user and verify_password(signin_data.password, user.hashed_password):
         request.session["username"] = user.username
-        return {"message": "Logged in successfully"}
+        return {"message": "로그인이 성공했습니다."}
     else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="로그인이 실패했습니다.")
 
 
 # 로그아웃
 @app.post("/logout")
 async def logout(request: Request):
     request.session.pop("username", None)
-    return {"message": "Logged out successfully"}
+    return {"message": "로그아웃이 성공했습니다."}
 
 
 ########################################
@@ -163,7 +174,11 @@ async def list_memos(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
 
     memos = db.query(Memo).filter(Memo.user_id == user.id).all()
-    return templates.TemplateResponse(request=request, name="memos.html", context={"memos": memos})
+    return templates.TemplateResponse(
+        request=request,
+        name="memos.html",
+        context={"memos": memos, "username": username},
+    )
 
 
 # 메모 수정
