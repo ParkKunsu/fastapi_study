@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 
-from controllers import router
-from database import Base, engine
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+
+from fast_api.prj_1.controllers import router
+from fast_api.prj_1.database import Base, engine
 
 
 @asynccontextmanager
@@ -26,4 +27,5 @@ templates = Jinja2Templates(directory="templates")
 # 기본 라우트
 @app.get("/")
 async def read_root(request: Request):
+    return templates.TemplateResponse(name="home.html", request=request)
     return templates.TemplateResponse(name="home.html", request=request)

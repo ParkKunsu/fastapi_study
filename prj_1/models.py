@@ -1,5 +1,6 @@
-from database import Base
 from sqlalchemy import Column, ForeignKey, Integer, String
+
+from fast_api.prj_1.database import Base
 
 
 class User(Base):
@@ -15,4 +16,5 @@ class Memo(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String(100))
+    content = Column(String(1000))
     content = Column(String(1000))

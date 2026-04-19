@@ -1,10 +1,11 @@
-from dependencies import get_db, get_password_hash, verify_password
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.templating import Jinja2Templates
-from models import Memo, User
-from schemas import MemoCreate, MemoUpdate, UserCreate, UserLogin
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+from fast_api.prj_1.dependencies import get_db, get_password_hash, verify_password
+from fast_api.prj_1.models import Memo, User
+from fast_api.prj_1.schemas import MemoCreate, MemoUpdate, UserCreate, UserLogin
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -151,4 +152,5 @@ async def delete_memo(request: Request, memo_id: int, db: AsyncSession = Depends
 
 @router.get("/about")
 async def about():
+    return {"message": "이것은 마이 메모 앱의 소개 페이지입니다."}
     return {"message": "이것은 마이 메모 앱의 소개 페이지입니다."}
